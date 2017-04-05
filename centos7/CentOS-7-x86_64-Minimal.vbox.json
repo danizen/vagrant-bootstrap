@@ -1,0 +1,68 @@
+{
+  "description": "CentOS 7 Development Image",
+
+  "variables": {
+    "boot_wait": "5s",
+    "headless": "false",
+    "http_directory": "http",
+    "iso_url": "http://mirrors.kernel.org/centos/7/isos/x86_64/CentOS-7-x86_64-Minimal-1611.iso",
+    "iso_checksum": "27bd866242ee058b7a5754e83d8ee8403e216b93d130d800852a96f41c34d86a",
+    "iso_checksum_type": "sha256",
+    "machine_cpus": "1",
+    "machine_disk_size": "22528",
+    "machine_memory": "1024",
+    "machine_vram": "4",
+    "outputs_directory": "..",
+    "vm_name": "centos7_bootstrap"
+   },
+
+  "builders": [
+    {
+     "type": "virtualbox-iso",
+     "name": "centos7-ami-base",
+     "boot_command":
+     [
+       "<tab> linux ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ks.cfg vga=791<enter><wait>"
+     ],
+     "boot_wait": "{{ user `boot_wait` }}",
+     "disk_size": "{{ user `machine_disk_size` }}",
+     "format": "ova",
+     "guest_additions_mode": "disable",
+     "guest_os_type": "RedHat_64",
+     "headless": "{{ user `headless` }}",
+     "hard_drive_interface": "sata",
+     "http_directory": "{{ user `http_directory` }}",
+     "iso_url": "{{ user `iso_url` }}",
+     "iso_checksum": "{{ user `iso_checksum` }}",
+     "iso_checksum_type": "{{ user `iso_checksum_type` }}",
+     "output_directory": "{{ user `outputs_directory` }}/{{ user `vm_name` }}_{{build_name}}/",
+     "shutdown_command": "/usr/sbin/halt -p",
+     "ssh_password": "{{ user `password` }}",
+     "ssh_username": "{{ user `user` }}",
+     "ssh_wait_timeout": "60m",
+     "vboxmanage": [
+       ["modifyvm", "{{.Name}}", "--cpus", "{{ user `machine_cpus` }}"],
+       ["modifyvm", "{{.Name}}", "--memory", "{{ user `machine_memory` }}"],
+       ["modifyvm", "{{.Name}}", "--vram", "{{ user `machine_vram` }}"]
+     ]
+    }
+  ],
+
+  "provisioners": [
+    {
+      "type": "shell",
+      "remote_folder": "/root",
+      "inline": [
+        "yum -y install ansible",
+        "sed -i '/^UUID/d' /etc/sysconfig/network-scripts/ifcfg-enp0s3"
+      ]
+    },
+  ],
+   "post-processors": [
+     {
+       "type": "vagrant",
+       "keep_input_artifact": true,
+       "output": "{{ user `outputs_directory` }}/{{ user `vm_name` }}_{{ .BuildName }}.box"
+     }
+   ]
+}
