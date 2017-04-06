@@ -1,0 +1,82 @@
+{
+  "description": "CentOS 7 Development Image",
+
+  "variables": {
+    "boot_wait": "5s",
+    "headless": "false",
+    "http_directory": "input",
+    "iso_url": "http://mirrors.kernel.org/centos/6/isos/x86_64/CentOS-6.9-x86_64-minimal.iso",
+    "iso_checksum": "422af57b493b8af49d485885a730c5a1d955f803fac85aa51311c393168b9080",
+    "iso_checksum_type": "sha256",
+    "machine_cpus": "1",
+    "machine_disk_size": "22528",
+    "machine_memory": "1024",
+    "machine_vram": "4",
+    "outputs_directory": "output",
+    "vm_name": "centos6_bootstrap",
+    "user": "root",
+    "password": "dorian2-gray"
+   },
+
+  "builders": [
+    {
+     "type": "virtualbox-iso",
+     "name": "centos6-base",
+     "boot_command":
+     [
+       "<tab> linux ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ks.cfg vga=791<enter><wait>"
+     ],
+     "boot_wait": "{{ user `boot_wait` }}",
+     "disk_size": "{{ user `machine_disk_size` }}",
+     "format": "ova",
+     "guest_os_type": "RedHat_64",
+     "headless": "{{ user `headless` }}",
+     "hard_drive_interface": "sata",
+     "http_directory": "{{ user `http_directory` }}",
+     "iso_url": "{{ user `iso_url` }}",
+     "iso_checksum": "{{ user `iso_checksum` }}",
+     "iso_checksum_type": "{{ user `iso_checksum_type` }}",
+     "guest_additions_mode": "disable",
+     "guest_additions_url": "http://download.virtualbox.org/virtualbox/5.1.14/VBoxGuestAdditions_5.1.14.iso",
+     "guest_additions_sha256": "1b206b76050dccd3ed979307230f9ddea79551e1c0aba93faee77416733cdc8a",
+     "output_directory": "{{ user `outputs_directory` }}/{{ user `vm_name` }}/",
+     "shutdown_command": "/usr/sbin/halt -p",
+     "ssh_password": "{{ user `password` }}",
+     "ssh_username": "{{ user `user` }}",
+     "ssh_wait_timeout": "60m",
+     "vboxmanage": [
+       ["modifyvm", "{{.Name}}", "--cpus", "{{ user `machine_cpus` }}"],
+       ["modifyvm", "{{.Name}}", "--memory", "{{ user `machine_memory` }}"],
+       ["modifyvm", "{{.Name}}", "--vram", "{{ user `machine_vram` }}"]
+     ]
+    }
+  ],
+
+  "provisioners": [
+    {
+      "type": "file",
+      "source": "input/authorized_keys",
+      "destination": "/tmp/authorized_keys"
+    },
+    {
+      "type": "shell",
+      "remote_folder": "/root",
+      "inline": [
+        "yum -y install ansible",
+        "sed -i '/^UUID/d' /etc/sysconfig/network-scripts/ifcfg-enp0s3",
+        "useradd vagrant",
+        "install -d -o vagrant -g vagrant -m 0700 /home/vagrant/.ssh",
+        "install -o vagrant -g vagrant -m 0600 /tmp/authorized_keys /home/vagrant/.ssh/authorized_keys",
+        "unlink /tmp/authorized_keys",
+        "echo 'vagrant ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers"
+      ]
+    }
+  ],
+   "post-processors": [
+     {
+       "type": "vagrant",
+       "keep_input_artifact": true,
+       "output": "{{ user `outputs_directory` }}/{{ user `vm_name` }}_{{ .BuildName }}.box"
+     }
+   ]
+}
