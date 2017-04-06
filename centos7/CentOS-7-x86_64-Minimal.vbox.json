@@ -4,7 +4,7 @@
   "variables": {
     "boot_wait": "5s",
     "headless": "false",
-    "http_directory": "http",
+    "http_directory": "input",
     "iso_url": "http://mirrors.kernel.org/centos/7/isos/x86_64/CentOS-7-x86_64-Minimal-1611.iso",
     "iso_checksum": "27bd866242ee058b7a5754e83d8ee8403e216b93d130d800852a96f41c34d86a",
     "iso_checksum_type": "sha256",
@@ -12,8 +12,10 @@
     "machine_disk_size": "22528",
     "machine_memory": "1024",
     "machine_vram": "4",
-    "outputs_directory": "..",
-    "vm_name": "centos7_bootstrap"
+    "outputs_directory": "output",
+    "vm_name": "centos7_bootstrap",
+    "user": "root",
+    "password": "dorian2-gray"
    },
 
   "builders": [
@@ -27,7 +29,6 @@
      "boot_wait": "{{ user `boot_wait` }}",
      "disk_size": "{{ user `machine_disk_size` }}",
      "format": "ova",
-     "guest_additions_mode": "disable",
      "guest_os_type": "RedHat_64",
      "headless": "{{ user `headless` }}",
      "hard_drive_interface": "sata",
@@ -35,6 +36,9 @@
      "iso_url": "{{ user `iso_url` }}",
      "iso_checksum": "{{ user `iso_checksum` }}",
      "iso_checksum_type": "{{ user `iso_checksum_type` }}",
+     "guest_additions_mode": "disable",
+     "guest_additions_url": "http://download.virtualbox.org/virtualbox/5.1.14/VBoxGuestAdditions_5.1.14.iso",
+     "guest_additions_sha256": "1b206b76050dccd3ed979307230f9ddea79551e1c0aba93faee77416733cdc8a",
      "output_directory": "{{ user `outputs_directory` }}/{{ user `vm_name` }}_{{build_name}}/",
      "shutdown_command": "/usr/sbin/halt -p",
      "ssh_password": "{{ user `password` }}",
@@ -50,13 +54,23 @@
 
   "provisioners": [
     {
+      "type": "file",
+      "source": "input/authorized_keys",
+      "destination": "/tmp/authorized_keys"
+    },
+    {
       "type": "shell",
       "remote_folder": "/root",
       "inline": [
         "yum -y install ansible",
-        "sed -i '/^UUID/d' /etc/sysconfig/network-scripts/ifcfg-enp0s3"
+        "sed -i '/^UUID/d' /etc/sysconfig/network-scripts/ifcfg-enp0s3",
+        "useradd vagrant",
+        "install -d -o vagrant -g vagrant -m 0700 /home/vagrant/.ssh",
+        "install -o vagrant -g vagrant -m 0600 /tmp/authorized_keys /home/vagrant/.ssh/authorized_keys",
+        "unlink /tmp/authorized_keys",
+        "echo 'vagrant ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers"
       ]
-    },
+    }
   ],
    "post-processors": [
      {
